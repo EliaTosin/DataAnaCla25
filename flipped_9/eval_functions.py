@@ -44,21 +44,22 @@ def plot_confusion_matrix(y_true, y_pred, threshold=3.5):
 
 ### 2. Visualization per Category and Popularity
 
-def plot_avg_error_by_genre(ratings_df, movies_df):
+def plot_avg_error_by_genre(ratings_df, movies_df, prediction_column='predicted_rating'):
     df = pd.merge(ratings_df, movies_df, on='movieId')
     df['genres'] = df['genres'].str.split('|')
     df = df.explode('genres')
-    df['error'] = abs(df['rating'] - df['predicted_rating'])
+    df['error'] = abs(df['rating'] - df[prediction_column])
     genre_error = df.groupby('genres')['error'].mean()
     genre_error.plot(kind='bar', figsize=(12, 6), title='Average Error per Genre')
     plt.show()
 
 
-def plot_avg_error_by_popularity(ratings_df):
+def plot_avg_error_by_popularity(ratings_df, prediction_column='predicted_rating'):
     movie_counts = ratings_df['movieId'].value_counts()
+    # splits those counts into 3 equal-sized quantile bins
     ratings_df['popularity_bin'] = pd.qcut(ratings_df['movieId'].map(movie_counts), q=3,
                                            labels=['Low', 'Medium', 'High'])
-    ratings_df['error'] = abs(ratings_df['rating'] - ratings_df['predicted_rating'])
+    ratings_df['error'] = abs(ratings_df['rating'] - ratings_df[prediction_column])
     pop_error = ratings_df.groupby('popularity_bin')['error'].mean()
     pop_error.plot(kind='bar', figsize=(8, 5), title='Error by Popularity Bin')
     plt.show()
