@@ -1,9 +1,12 @@
+import random
+
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from sklearn.metrics import mean_absolute_error, mean_squared_error, accuracy_score, precision_score, recall_score, f1_score, roc_curve, precision_recall_curve
+import seaborn as sns
 from scipy.stats import spearmanr
-import matplotlib.pyplot as plt
-import random
+from sklearn.metrics import mean_absolute_error, mean_squared_error, accuracy_score, precision_score, recall_score, \
+    f1_score, roc_curve, precision_recall_curve, confusion_matrix
 
 
 ### 1. Accuracy Metrics + Long Tail Effect
@@ -21,9 +24,22 @@ def evaluate_rating_predictions(y_true, y_pred, threshold=3.5):
 def analyze_long_tail_effect(ratings_df, prediction_column='predicted_rating'):
     movie_counts = ratings_df['movieId'].value_counts()
     threshold = movie_counts.quantile(0.75)
-    ratings_df['popularity'] = ratings_df['movieId'].map(lambda x: 'long_tail' if movie_counts[x] < threshold else 'head')
+    ratings_df['popularity'] = ratings_df['movieId'].map(
+        lambda x: 'long_tail' if movie_counts[x] < threshold else 'head')
     ratings_df['error'] = abs(ratings_df['rating'] - ratings_df[prediction_column])
     return ratings_df.groupby('popularity')['error'].mean()
+
+
+def plot_confusion_matrix(y_true, y_pred, threshold=3.5):
+    y_pred_binary = [1 if r >= threshold else 0 for r in y_pred]
+    y_true_binary = [1 if r >= threshold else 0 for r in y_true]
+    cm = confusion_matrix(y_true_binary, y_pred_binary)
+    plt.figure(figsize=(8, 6))
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
+    plt.title('Confusion Matrix')
+    plt.xlabel('Predicted')
+    plt.ylabel('True')
+    plt.show()
 
 
 ### 2. Visualization per Category and Popularity
@@ -40,7 +56,8 @@ def plot_avg_error_by_genre(ratings_df, movies_df):
 
 def plot_avg_error_by_popularity(ratings_df):
     movie_counts = ratings_df['movieId'].value_counts()
-    ratings_df['popularity_bin'] = pd.qcut(ratings_df['movieId'].map(movie_counts), q=3, labels=['Low', 'Medium', 'High'])
+    ratings_df['popularity_bin'] = pd.qcut(ratings_df['movieId'].map(movie_counts), q=3,
+                                           labels=['Low', 'Medium', 'High'])
     ratings_df['error'] = abs(ratings_df['rating'] - ratings_df['predicted_rating'])
     pop_error = ratings_df.groupby('popularity_bin')['error'].mean()
     pop_error.plot(kind='bar', figsize=(8, 5), title='Error by Popularity Bin')
