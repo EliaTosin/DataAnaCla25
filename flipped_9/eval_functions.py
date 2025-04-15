@@ -18,12 +18,44 @@ def evaluate_rating_predictions(y_true, y_pred, threshold=3.5):
     }
 
 
-def analyze_long_tail_effect(ratings_df, prediction_column='predicted_rating'):
-    movie_counts = ratings_df['movieId'].value_counts()
+def analyze_long_tail_effect(ratings_df, prediction_column='predicted', item_column='movieId', show_plot=True):
+    # Calcola il numero di rating per ogni item
+    movie_counts = ratings_df[item_column].value_counts()
+    
+    # Imposta la soglia come il 75° percentile dei conteggi
     threshold = movie_counts.quantile(0.75)
-    ratings_df['popularity'] = ratings_df['movieId'].map(lambda x: 'long_tail' if movie_counts[x] < threshold else 'head')
+    
+    # Aggiungi una colonna 'popularity' al DataFrame in base al conteggio degli item
+    ratings_df['popularity'] = ratings_df[item_column].map(
+        lambda x: 'long_tail' if movie_counts[x] < threshold else 'head'
+    )
+    
+    # Calcola l'errore assoluto per ogni riga
     ratings_df['error'] = abs(ratings_df['rating'] - ratings_df[prediction_column])
-    return ratings_df.groupby('popularity')['error'].mean()
+    
+    # Raggruppa per la categoria 'popularity' e calcola l'errore medio
+    error_by_popularity = ratings_df.groupby('popularity')['error'].mean()
+    
+    if show_plot:
+        # Visualizza la distribuzione dei conteggi per item
+        plt.figure(figsize=(10, 6))
+        plt.hist(movie_counts, bins=50, alpha=0.7, color='skyblue', edgecolor='gray')
+        plt.axvline(threshold, color='red', linestyle='--', linewidth=2, 
+                    label=f"Soglia (75° percentile): {threshold:.0f}")
+        plt.xlabel("Numero di rating per item")
+        plt.ylabel("Frequenza")
+        plt.title("Distribuzione dei rating per item (Long Tail)")
+        plt.legend()
+        plt.show()
+        
+        # Mostra anche il conteggio degli item in ciascuna categoria
+        long_tail_count = (movie_counts < threshold).sum()
+        head_count = (movie_counts >= threshold).sum()
+        print(f"Numero di item in long tail: {long_tail_count}")
+        print(f"Numero di item in head: {head_count}")
+    
+    return error_by_popularity
+
 
 
 ### 2. Visualization per Category and Popularity
@@ -32,7 +64,7 @@ def plot_avg_error_by_genre(ratings_df, movies_df):
     df = pd.merge(ratings_df, movies_df, on='movieId')
     df['genres'] = df['genres'].str.split('|')
     df = df.explode('genres')
-    df['error'] = abs(df['rating'] - df['predicted_rating'])
+    df['error'] = abs(df['rating'] - df['predicted'])
     genre_error = df.groupby('genres')['error'].mean()
     genre_error.plot(kind='bar', figsize=(12, 6), title='Average Error per Genre')
     plt.show()
